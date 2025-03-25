@@ -1,35 +1,40 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const requestBtn = document.getElementById('request-btn');
-    const requestCountElement = document.getElementById('request-count');
-    const responseContainer = document.getElementById('response-container');
+import requests
+import time
+
+target = 'http://localhost:3000'
+
+def make_request():
+    try:
+        response = requests.get(target)
+        if response.status_code == 404:
+            print(f"🚨 SERVER CRASHED! (Request {response.headers.get('X-Request-Count')})")
+            print(f"Response: {response.json()}")
+            return False
+        else:
+            data = response.json()
+            print(f"✅ Request {response.headers.get('X-Request-Count')}: {data['message']}")
+            print(f"   Requests: {data['requests']}/{REQUEST_LIMIT}, Remaining: {data['remaining']}")
+            return True
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Request failed: {e}")
+        return False
+
+def reset_server():
+    try:
+        response = requests.get(f"{target}/reset")
+        print(f"\n🔄 {response.json()['message']}\n")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to reset server: {e}")
+
+# Constants
+REQUEST_LIMIT = 10
+DELAY_SECONDS = 0.5  # Half second between requests
+
+if __name__ == "__main__":
+    print(f"Testing server at {target} (will crash after {REQUEST_LIMIT} requests)")
     
-    let clientRequestCount = 0;
-    
-    requestBtn.addEventListener('click', function() {
-        clientRequestCount++;
-        requestCountElement.textContent = clientRequestCount;
-        
-        fetch('/')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Server crashed');
-                }
-                return response.text();
-            })
-            .then(html => {
-                responseContainer.innerHTML = `
-                    <div class="success">
-                        Request ${clientRequestCount} successful
-                    </div>
-                `;
-            })
-            .catch(error => {
-                responseContainer.innerHTML = `
-                    <div class="error">
-                        ${error.message} (HTTP 404)
-                    </div>
-                `;
-                requestBtn.disabled = true;
-            });
-    });
-});
+    while True:
+        if not make_request():
+            reset_server()
+            time.sleep(1)  # Wait a second after reset
+        time.sleep(DELAY_SECONDS)

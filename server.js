@@ -3,61 +3,78 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// Middleware to track requests
 let requestCount = 0;
 let serverCrashed = false;
-const REQUEST_LIMIT = 10;  // Changed from 5 to 10
+const REQUEST_LIMIT = 18;
+const clients = new Set(); // For Server-Sent Events
 
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Middleware to count API requests
 app.use((req, res, next) => {
-    if (serverCrashed) {
-        return res.status(404).send(`
-            <h1>Server Overloaded</h1>
-            <p>Too many requests (${REQUEST_LIMIT}+). Server has crashed.</p>
-            <p>Please try again later.</p>
-        `);
+    if (req.path === '/api') {
+        requestCount++;
+        console.log(`API Request #${requestCount} received`);
+        
+        if (requestCount >= REQUEST_LIMIT) {
+            serverCrashed = true;
+            console.log('SERVER CRASHED!');
+        }
+        notifyClients();
     }
-    
-    requestCount++;
-    console.log(`Request #${requestCount} received`);
-    
-    if (requestCount >= REQUEST_LIMIT) {
-        serverCrashed = true;
-        console.log(`Server has crashed due to too many requests (${REQUEST_LIMIT})`);
-        return res.status(404).send(`
-            <h1>Server Overloaded</h1>
-            <p>Too many requests (${REQUEST_LIMIT}+). Server has crashed.</p>
-            <p>Please try again later.</p>
-        `);
-    }
-    
     next();
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Basic route
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Reset endpoint (for testing)
-app.get('/reset', (req, res) => {
-    requestCount = 0;
-    serverCrashed = false;
-    res.send(`Server reset. Request count: 0 (will crash after ${REQUEST_LIMIT} requests)`);
-});
-
-// Endpoint to check current status
-app.get('/status', (req, res) => {
-    res.send({
-        requestCount,
-        serverCrashed,
-        requestsRemaining: REQUEST_LIMIT - requestCount
+// API endpoint for Python
+app.get('/api', (req, res) => {
+    if (serverCrashed) {
+        return res.status(404).json({
+            status: 'error',
+            message: `Server crashed after ${REQUEST_LIMIT} requests`,
+            totalRequests: requestCount
+        });
+    }
+    res.json({
+        status: 'success',
+        currentCount: requestCount,
+        remaining: REQUEST_LIMIT - requestCount
     });
 });
 
+// SSE endpoint for real-time updates
+app.get('/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    res.write(`data: ${JSON.stringify({
+        count: requestCount,
+        crashed: serverCrashed,
+        limit: REQUEST_LIMIT
+    })}\n\n`);
+    
+    clients.add(res);
+    req.on('close', () => clients.delete(res));
+});
+
+// Reset endpoint
+app.get('/reset', (req, res) => {
+    requestCount = 0;
+    serverCrashed = false;
+    notifyClients();
+    res.json({ status: 'success', message: 'Server reset' });
+});
+
+function notifyClients() {
+    const data = JSON.stringify({
+        count: requestCount,
+        crashed: serverCrashed,
+        limit: REQUEST_LIMIT
+    });
+    clients.forEach(client => client.write(`data: ${data}\n\n`));
+}
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Server will crash after ${REQUEST_LIMIT} requests`);
+    console.log(`Will crash after ${REQUEST_LIMIT} API requests`);
 });

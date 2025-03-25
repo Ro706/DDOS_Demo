@@ -3,17 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Request Limit Demo</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Server Monitor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .running {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .crashed {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .counter {
+            font-size: 1.5em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .progress-container {
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #4CAF50;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>DDOS Demo</h1>
-        <div class="counter">Requests to server: <span id="request-count">0</span>/10</div>
-        <button id="request-btn">Make Request</button>
-        <div id="response-container"></div>
-        <p class="reset-hint">Visit /reset to restart the server</p>
+        <h1>Server Request Monitor</h1>
+        <div id="status" class="status running">🟢 Server Running Normally</div>
+        <div class="counter">
+            API Requests: <span id="count">0</span>/<span id="limit">18</span>
+        </div>
+        <div class="progress-container">
+            <div id="progress" class="progress-bar" style="width: 0%"></div>
+        </div>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        const countEl = document.getElementById('count');
+        const limitEl = document.getElementById('limit');
+        const statusEl = document.getElementById('status');
+        const progressEl = document.getElementById('progress');
+        
+        limitEl.textContent = 10;
+        
+        const eventSource = new EventSource('/events');
+        
+        eventSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            updateDisplay(data);
+        };
+        
+        function updateDisplay(data) {
+            countEl.textContent = data.count;
+            
+            // Update progress bar
+            const percent = (data.count / data.limit) * 100;
+            progressEl.style.width = `${percent}%`;
+            
+            if (data.crashed) {
+                statusEl.className = 'status crashed';
+                statusEl.textContent = '🔴 Server Crashed!';
+                progressEl.style.background = '#c62828';
+                window.location.href = '/'; // Redirect to crash page
+            }
+        }
+    </script>
 </body>
 </html>

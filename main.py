@@ -1,13 +1,31 @@
 import requests
-import time  # For adding delay between requests
+import time
 
-target = 'http://localhost:3000'  # The Express server runs on port 3000 by default
+SERVER = "http://localhost:3000"
+API_ENDPOINT = f"{SERVER}/api"
+LIMIT = 18
+DELAY = 0.5  # 500ms between requests
 
-while True:
+def make_request():
     try:
-        response = requests.get(target)
-        print(f"Status Code: {response.status_code}, Request Count: {response.text}")
-        time.sleep(1)  # Add 1 second delay between requests
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
-        break
+        response = requests.get(API_ENDPOINT)
+        if response.status_code == 404:
+            data = response.json()
+            print(f"🚨 CRASHED at {data['totalRequests']} requests")
+            return False
+        data = response.json()
+        print(f"✅ Request {data['currentCount']}/{LIMIT}")
+        return True
+    except Exception as e:
+        print(f"⚠️ Error: {e}")
+        return False
+
+if __name__ == "__main__":
+    print(f"Sending requests to {API_ENDPOINT}")
+    print(f"Will crash after {LIMIT} requests\n")
+    
+    while True:
+        if not make_request():
+            print("\nServer has crashed. Open browser to reset.")
+            break
+        time.sleep(DELAY)
