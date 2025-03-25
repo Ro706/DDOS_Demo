@@ -1,7 +1,7 @@
 # DDos Demo 
 
 ## Setup
-bash```
+```
 
 git clone https://github.com/Ro706/DDOS_Demo.git 
 cd DDOS_Demo
