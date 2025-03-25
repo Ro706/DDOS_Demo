@@ -5,7 +5,7 @@
 
 git clone https://github.com/Ro706/DDOS_Demo.git 
 cd DDOS_Demo
-npm i 
+npm i express
 node server.js
 (open -> localhost:3000)
 (In new tab)
