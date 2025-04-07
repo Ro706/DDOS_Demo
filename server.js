@@ -5,7 +5,7 @@ const PORT = 3000;
 
 let requestCount = 0;
 let serverCrashed = false;
-const REQUEST_LIMIT = 18;
+const REQUEST_LIMIT = 10;
 const clients = new Set(); // For Server-Sent Events
 
 app.use(express.static(path.join(__dirname, 'public')));

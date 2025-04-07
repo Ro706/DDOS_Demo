@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('reset-btn');
     const eventLog = document.getElementById('event-log');
     
-    requestLimitEl.textContent = 10;
+    requestLimitEl.textContent = 18;
     
     // Connect to SSE endpoint
     const eventSource = new EventSource('/events');
